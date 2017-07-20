@@ -295,6 +295,7 @@ function join(socket, room, userName, callback) {
 
                 outgoingMedia.connect(hubPort);
                 console.log(`users ${userSession.name} media connected to the hub port!`);
+                userSession.recorderHubPort = hubPort;
                 room.recorder.record();
                 console.log("Recording started!");
             });
@@ -365,6 +366,7 @@ function leaveRoom(socket, callback) {
     console.log('notify all user that ' + userSession.name + ' is leaving the room ' + room.name);
     var usersInRoom = room.participants;
     delete usersInRoom[userSession.name];
+    userSession.recorderHubPort.release();
     userSession.outgoingMedia.release();
     
     // release incoming media for the leaving user

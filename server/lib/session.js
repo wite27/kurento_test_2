@@ -16,6 +16,7 @@ export default class Session {
         this.name = userName;
         this.roomName = roomName;
         this.outgoingMedia = null;
+        this.recorderHubPort = null;
         this.incomingMedia = {};
         this.iceCandidateQueue = {};
     }
