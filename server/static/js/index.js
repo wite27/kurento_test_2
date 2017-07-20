@@ -18,6 +18,7 @@
 var socket = io('https://' + location.host);
 var participants = {};
 var name;
+var roomName;
 
 window.onbeforeunload = function() {
 	socket.disconnect();
@@ -31,6 +32,9 @@ socket.on('message', parsedMessage => {
 	console.info('Received message: ' + parsedMessage.id);
 
 	switch (parsedMessage.id) {
+	case 'joinRoomResponse':
+		onJoinRoomResponse(parsedMessage);
+		break;
 	case 'existingParticipants':
 		onExistingParticipants(parsedMessage);
 		break;
@@ -58,11 +62,7 @@ socket.on('message', parsedMessage => {
 
 function register() {
 	name = document.getElementById('name').value;
-	var roomName = document.getElementById('roomName').value;
-
-	document.getElementById('room-header').innerText = 'ROOM ' + roomName;
-	document.getElementById('join').style.display = 'none';
-	document.getElementById('room').style.display = 'block';
+	roomName = document.getElementById('roomName').value;
 
 	var message = {
 		id : 'joinRoom',
@@ -72,6 +72,13 @@ function register() {
 	sendMessage(message);
 }
 
+function onJoinRoomResponse(message){
+	if (message.status === 'rejected')
+	{
+		window.alert(message.error + " User name " + message.name + " .");
+		return;
+	}
+}
 function onNewParticipant(request) {
 	receiveVideo(request.name);
 }
@@ -94,6 +101,11 @@ function callResponse(message) {
 }
 
 function onExistingParticipants(msg) {
+	// registation successful, hide form and show the people
+	document.getElementById('room-header').innerText = 'ROOM ' + roomName;
+	document.getElementById('join').style.display = 'none';
+	document.getElementById('room').style.display = 'block';
+
 	var constraints = {
 		audio : true,
 		video : {

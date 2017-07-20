@@ -75,6 +75,13 @@ io.on('connection', socket => {
                 joinRoom(socket, message, err => {
                     if (err) {
                         console.error(`join Room error ${err}`);
+                        socket.emit('message',
+                        {
+                            id: 'joinRoomResponse',
+                            name: message.name,
+                            status: 'rejected',
+                            error: err
+                        });
                     }
                 });
                 break;
@@ -123,11 +130,11 @@ function joinRoom(socket, message, callback) {
         }
         // join user to room
         join(socket, room, message.name, (err, user) => {
-            console.log(`join success : ${user.name}`);
             if (err) {
                 callback(err);
                 return;
             }
+            console.log(`join success : ${user.name}`);
             callback();
         });
     });
@@ -159,8 +166,8 @@ function getRoom(roomName, callback) {
                         return callback(error);
                     }
 
-
-                    pipeline.create('RecorderEndpoint', {uri : "file:///tmp/call.webm"}, (error, recorder) => {
+                    var options = {uri : "file:///tmp/room_" + roomName + "_" + Date.now() + ".webm"};
+                    pipeline.create('RecorderEndpoint', options, (error, recorder) => {
                         if (error) {
                             return callback(error);
                         }
@@ -209,6 +216,8 @@ function getRoom(roomName, callback) {
  */
 function join(socket, room, userName, callback) {
 
+    if (userRegister.getByName(userName))
+        return callback('User with that name is in room already!', undefined);
     // add user to session
     let userSession = new Session(socket, userName, room.name);
 
@@ -254,9 +263,7 @@ function join(socket, room, userName, callback) {
             });
         });
 
-         
-         let usersInRoom = room.participants;
-
+        let usersInRoom = room.participants;
 
         // notify other user that new user is joing
         for (let i in usersInRoom) {
@@ -395,6 +402,10 @@ function leaveRoom(socket, callback) {
         room.pipeline.release();
         delete rooms[userSession.roomName];
     }
+
+    // unregister user to allow use this name later
+    userRegister.unregister(userSession.name);
+
     delete userSession.roomName;
 }
 
