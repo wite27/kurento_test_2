@@ -16,6 +16,7 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 let userRegister = new Register();
 let rooms = {};
+let composite = null;
 
 const argv = minimst(process.argv.slice(2), {
     default: {
@@ -147,15 +148,42 @@ function getRoom(roomName, callback) {
                 if (error) {
                     return callback(error);
                 }
-                room = {
-                    name: roomName,
-                    pipeline: pipeline,
-                    participants: {},
-                    kurentoClient: kurentoClient
-                };
+                //create composite for room's recorder output, and users' media input
+                pipeline.create('Composite', (error, composite) => {                   
+                    if (error) {
+                        return callback(error);
+                    }
 
-                rooms[roomName] = room;
-                callback(null, room);
+
+                    pipeline.create('RecorderEndpoint', {uri : "file:///tmp/call.webm"}, (error, recorder) => {
+                        if (error) {
+                            return callback(error);
+                        }
+
+                        composite.createHubPort((eror, hubPort) =>
+                        {
+                            if (error) {
+                                return callback(error);
+                            }
+
+                            // make one output for recorder
+                            hubPort.connect(recorder);
+                            recorder.record();
+
+                            room = {
+                                name: roomName,
+                                pipeline: pipeline,
+                                composite: composite,
+                                recorder: recorder,
+                                participants: {},
+                                kurentoClient: kurentoClient
+                            };
+
+                            rooms[roomName] = room;
+                            callback(null, room);
+                        });
+                    });
+                });
             });
         });
     } else {
@@ -163,7 +191,6 @@ function getRoom(roomName, callback) {
         callback(null, room);
     }
 }
-
 
 /**
  * join call room
@@ -341,6 +368,7 @@ function leaveRoom(socket, callback) {
 
     // Release pipeline and delete room when room is empty
     if (Object.keys(room.participants).length == 0) {
+        room.recorder.stop();
         room.pipeline.release();
         delete rooms[userSession.roomName];
     }
@@ -362,6 +390,43 @@ function getKurentoClient(callback) {
         callback(null, kurentoClient);
     });
 }
+
+// Retrieve or create composite hub
+/*function getComposite(pipeline, callback ) {
+    if (composite !== null) {
+        console.log("Composer already created");
+        return callback( null, composite, mediaPipeline );
+    }
+    getMediaPipeline( function( error, _pipeline) {
+        if (error) {
+            return callback(error);
+        }
+        _pipeline.create( 'Composite',  function( error, _composite ) {
+            console.log("creating Composite");
+            if (error) {
+                return callback(error);
+            }
+            composite = _composite;
+            callback( null, composite );
+        });
+    });
+}*/
+
+// Create a hub port
+/*function createHubPort(callback) {
+    getComposite(function(error, _composite) {
+        if (error) {
+            return callback(error);
+        }
+        _composite.createHubPort( function(error, _hubPort) {
+            console.info("Creating hubPort");
+            if (error) {
+                return callback(error);
+            }
+            callback( null, _hubPort );
+        });
+    });
+}*/
 
 /**
  *  Add ICE candidate, required for WebRTC calls
@@ -451,6 +516,8 @@ function getEndpointForUser(userSession, sender, callback) {
                     }
                     callback(null, incoming);
                 });
+
+                // TODO: connect to the composite's hub
             });
         })
     } else {
