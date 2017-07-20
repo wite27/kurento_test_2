@@ -168,7 +168,9 @@ function getRoom(roomName, callback) {
 
                             // make one output for recorder
                             hubPort.connect(recorder);
-                            recorder.record();
+
+                            console.log("RECORDER created and connected to the hubPort");
+                            //recorder.record();
 
                             room = {
                                 name: roomName,
@@ -277,6 +279,20 @@ function join(socket, room, userName, callback) {
 
         // register user to room
         room.participants[userSession.name] = userSession;
+
+        room.composite.createHubPort((error, hubPort) =>
+            {
+                if (error) {
+                    console.log(error);
+                    callback(error);
+                    return;
+                }
+
+                outgoingMedia.connect(hubPort);
+                console.log(`users ${userSession.name} media connected to the hub port!`);
+                room.recorder.record();
+                console.log("Recording started!");
+            });
 
         callback(null, userSession);
     });
@@ -514,10 +530,9 @@ function getEndpointForUser(userSession, sender, callback) {
                         callback(error);
                         return;
                     }
+
                     callback(null, incoming);
                 });
-
-                // TODO: connect to the composite's hub
             });
         })
     } else {
