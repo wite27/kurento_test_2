@@ -59,6 +59,11 @@ io.on('connection', socket => {
     });
 
     socket.on('disconnect', data => {
+            leaveRoom(socket, (error) => {
+                if (error) {
+                    console.error(error);
+                }
+            });
         console.log(`Connection : %s disconnect`, data);
     });
 
