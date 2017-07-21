@@ -155,7 +155,7 @@ function getRoom(roomName, callback) {
             if (error) {
                 return callback(error);
             }
-
+            console.log('got kurento client');
             kurentoClient.create('MediaPipeline', (error, pipeline) => {
                 if (error) {
                     return callback(error);
@@ -416,6 +416,7 @@ function leaveRoom(socket, callback) {
  * @param {function} callback 
  */
 function getKurentoClient(callback) {
+    console.log("trying to get kurento client at " + wsUrl);
     kurento(wsUrl, (error, kurentoClient) => {
         if (error) {
             let message = `Could not find media server at address ${wsUrl}`;
